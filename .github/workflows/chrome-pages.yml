@@ -27,6 +27,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci --no-audit --no-fund
+        env:
+          ONNXRUNTIME_NODE_INSTALL_CUDA: skip
         working-directory: chrome-source/web
       - run: npm test
         working-directory: chrome-source/web
