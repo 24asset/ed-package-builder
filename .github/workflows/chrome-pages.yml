@@ -38,6 +38,8 @@ jobs:
         working-directory: chrome-source/web
       - run: npm run build
         working-directory: chrome-source/web
+      - name: Open the progression builder from the site root
+        run: cp chrome-source/web/dist/progression.html chrome-source/web/dist/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
