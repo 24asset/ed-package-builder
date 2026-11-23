@@ -34,8 +34,21 @@ jobs:
         working-directory: chrome-source/web
       - run: node prepare_runtime.mjs
         working-directory: chrome-source/web
-      - run: python download_models.py
+      - name: Copy published photo reader assets
         working-directory: chrome-source/web
+        run: |
+          set -euo pipefail
+          base=https://tiffanymnz.github.io/ed-package-builder
+          get() {
+            mkdir -p "public/$(dirname "$1")"
+            curl -fLsS --retry 3 --max-time 120 "$base/$1" -o "public/$1"
+          }
+          get models/manifest.json
+          for part in $(python -c 'import json; print(*json.load(open("public/models/manifest.json"))["vision.onnx"]["parts"])'); do get "models/$part"; done
+          get models/annotation-recognizer.onnx
+          get models/handwriting-server.onnx
+          card=card-models/Florence-2-base-ft
+          for asset in added_tokens.json config.json generation_config.json merges.txt preprocessor_config.json special_tokens_map.json tokenizer.json tokenizer_config.json vocab.json onnx/decoder_model_merged_quantized.onnx onnx/embed_tokens_quantized.onnx onnx/encoder_model_quantized.onnx onnx/vision_encoder_quantized.onnx; do get "$card/$asset"; done
       - run: npm run build
         working-directory: chrome-source/web
       - name: Open the progression builder from the site root
