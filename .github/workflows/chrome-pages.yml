@@ -18,6 +18,64 @@ jobs:
       - uses: actions/checkout@v4
       - run: base64 --decode chrome-web-source.b64 > chrome-web-source.zip
       - run: unzip -q chrome-web-source.zip -d chrome-source
+      - name: Remove the PDF assignment dropdown from the current source bundle
+        run: |
+          if echo '799534fec919ee8c9ee32871c3a7dba8112ab924148c3840b0b186a98e000213  chrome-source/web/src/progression.js' | sha256sum --check --status; then
+          git apply <<'PATCH'
+          --- a/chrome-source/web/src/progression.js
+          +++ b/chrome-source/web/src/progression.js
+          @@ -19,5 +19,4 @@
+           const sources=new Map();
+           const originals=new Map();
+          -const unassignedDocuments=new Set();
+           const replacementFile=document.createElement('input');
+           replacementFile.type='file';
+          @@ -135,8 +134,6 @@
+           }
+           function packageAttachments(){
+          - const used=taken();
+            return `<section class="paper" aria-label="Package Documents"><h2>Package Documents</h2>
+             <p class="hint">Check the document roles. Replace a corrected file here to keep its place in the package.</p>
+          -  ${[...unassignedDocuments].filter(id=>!used.has(id)).map(id=>`<div class="row"><span class="source-name">${esc(sources.get(id).name)}</span><label>Assign to <select data-assign-document="${id}" ${opening||exporting?'disabled':''}><option value="">Choose document type</option>${Object.entries(packageDocumentLabels).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label></div>`).join('')}
+             <div class="fields"><label>Selected bid amount ($)<input name="selectedBidAmount" type="number" min="0" step="0.01" value="${esc(draft.selectedBidAmount)}"></label></div>
+             <div class="slots">${Object.entries(packageDocumentLabels).map(([kind,label])=>{
+          @@ -398,7 +395,9 @@
+              const kind=planned.get(id);
+              if(kind){(draft.documents[kind]??=[]).push(sources.get(id));used.add(id);}
+          -   else unassignedDocuments.add(id);
+          -  }
+          -  if(available.length)status(notice+' Check the document roles in Package Documents.');
+          +  }
+          +  if(available.length){
+          +   const remaining=new Set(available.filter(({id})=>!used.has(id)).map(({id})=>id)).size;
+          +   status(notice+(remaining?' Use the Package Documents buttons to select the remaining PDFs.':' Check the attachments in Package Documents.'));
+          +  }
+             opening=false;render();
+            }
+          @@ -426,5 +425,4 @@
+            else if(id==='documents'){
+             (draft.documents[key]??=[]).push(source);
+          -  unassignedDocuments.delete(source.id);
+            }else if(id==='property'&&source.type!=='application/pdf')draft[key].push(source);
+            if(load)dialog.close();
+          @@ -437,9 +435,4 @@
+           });
+           root.addEventListener('change',event=>{
+          - const assign=event.target.dataset.assignDocument,kind=event.target.value;
+          - if(assign&&kind&&Object.hasOwn(packageDocumentLabels,kind)&&unassignedDocuments.has(assign)&&!taken().has(assign)){
+          -  (draft.documents[kind]??=[]).push(sources.get(assign));
+          -  unassignedDocuments.delete(assign);render();return;
+          - }
+            const load=scope(activeLoad);
+            if(event.target.id==='fill'){
+          @@ -566,5 +559,4 @@
+             if(index<0)return;
+             documents[index]=source;
+          -  unassignedDocuments.delete(source.id);
+             if(kind==='selectedBid'&&source.id!==previousId)draft.selectedBidAmount='';
+             status(packageDocumentLabels[kind]+' replaced. It will export in the same position.');
+          PATCH
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
